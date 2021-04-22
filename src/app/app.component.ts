@@ -68,7 +68,14 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   resetForm(): void {
-    this.form.reset({countryCode: {value: 'de', disabled: true}});
+    this.form.reset();
+    this.form.setValue({
+      countryCode: [{value: 'de', disabled: true}],
+      city: [''],
+      streetAddress: [''],
+      postalCode: [''],
+      houseNumber: [''],
+    });
     this.status = null;
   }
 
@@ -80,9 +87,10 @@ export class AppComponent implements OnInit, OnDestroy {
     ).subscribe((formData) => {
       console.log(formData);
       const query = this.constructQuery(formData);
-      if (query === '') {
+      if (query.replace(/ /g, '') === '') {
         return;
       }
+      console.log(query);
 
       this.apiService.getAutoCompleteQueryData(this.country, query, this.apiKey)
         .pipe(
