@@ -1,5 +1,5 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { COUNTRIES } from './consts/country.const';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { debounceTime, finalize, takeUntil } from 'rxjs/operators';
@@ -16,6 +16,7 @@ import { Status } from './models/api-response.dto';
 export class AppComponent implements OnInit, OnDestroy {
   @ViewChild('streetInput') streetInput: ElementRef;
   form: FormGroup;
+  formDefaultValues: any;
   ngUnsubscribe$: Subject<void>;
   apiResponse$: BehaviorSubject<any>;
 
@@ -41,17 +42,18 @@ export class AppComponent implements OnInit, OnDestroy {
     this.ngUnsubscribe$ = new Subject<void>();
     this.apiResponse$ = new BehaviorSubject<any>(null);
     this.form = this.initForm();
+    this.formDefaultValues = this.form.value;
     this.subscribeToValues();
     this.getApiKey();
   }
 
   initForm(): FormGroup {
     return this.fb.group({
-      countryCode: [{value: 'de', disabled: true}],
-      city: [''],
-      streetAddress: [''],
-      postalCode: [''],
-      houseNumber: [''],
+      countryCode: ['de', Validators.required],
+      city: ['', Validators.required],
+      streetAddress: ['', Validators.required],
+      postalCode: ['', Validators.required],
+      houseNumber: ['', Validators.required],
     });
   }
 
@@ -68,14 +70,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   resetForm(): void {
-    this.form.reset();
-    this.form.setValue({
-      countryCode: [{value: 'de', disabled: true}],
-      city: [''],
-      streetAddress: [''],
-      postalCode: [''],
-      houseNumber: [''],
-    });
+    this.form.reset(this.formDefaultValues);
     this.status = null;
   }
 
@@ -104,7 +99,15 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   constructQuery(formData: AddressModel): string {
-    return [`${formData.streetAddress} ${formData.houseNumber}`, formData.postalCode, formData.city].filter(e => !!e).join(',');
+    let firstAddress = '';
+    if (formData.postalCode) {
+      firstAddress = formData.postalCode;
+    } else if (formData.city) {
+      firstAddress = formData.city;
+    }
+    return [firstAddress, formData.streetAddress]
+      .filter(e => !!e)
+      .join(' ');
   }
 
   getApiKey(): void {
