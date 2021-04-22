@@ -80,12 +80,12 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   subscribeToValues(): void {
-    const form$ = this.form.valueChanges;
-    form$.pipe(
-      debounceTime(1000),
+    const street$ = this.form.get('streetAddress').valueChanges;
+    street$.pipe(
+      debounceTime(500),
       takeUntil(this.ngUnsubscribe$)
-    ).subscribe((formData) => {
-      console.log(formData);
+    ).subscribe((d) => {
+      const formData = this.form.getRawValue();
       const query = this.constructQuery(formData);
       if (query.replace(/ /g, '') === '') {
         return;
@@ -99,23 +99,12 @@ export class AppComponent implements OnInit, OnDestroy {
         this.streetFilter$.next(data.results);
         this.status = data.status;
         this.apiResponse$.next(JSON.stringify(data, undefined, 2));
-        this.streetInput.nativeElement.focus();
       });
     });
   }
 
   constructQuery(formData: AddressModel): string {
-    let query = '';
-    if (formData.streetAddress) {
-      query += `${formData.streetAddress} ${formData.houseNumber} `;
-    }
-    if (formData.postalCode) {
-      query += `${formData.postalCode} `;
-    }
-    if (formData.city) {
-      query += formData.city;
-    }
-    return query;
+    return [`${formData.streetAddress} ${formData.houseNumber}`, formData.postalCode, formData.city].filter(e => !!e).join(',');
   }
 
   getApiKey(): void {
