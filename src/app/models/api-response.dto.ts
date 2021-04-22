@@ -15,7 +15,7 @@ export interface VerificationResponseDto {
   district: string;
 }
 
-export type Status = 'UNVERIFIED' | 'INVALID' | 'VALID';
+export type Status = 'UNVERIFIED' | 'SUSPECT' | 'INVALID' | 'VALID';
 
 export interface RetrievedAddressDto {
   status: Status;

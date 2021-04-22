@@ -16,7 +16,7 @@ export class ApiService {
   verifyAddress(data: AddressModel, apiKey): Observable<VerificationResponseDto> {
     return this.http.get<VerificationResponseDto>(`${this.apiUrl}/verify`, {
       params: {
-        StreetAddress: data.streetAddress + data.houseNumber,
+        StreetAddress: data.streetAddress + ' ' + data.houseNumber,
         City: data.city,
         PostalCode: data.postalCode,
         CountryCode: data.countryCode,

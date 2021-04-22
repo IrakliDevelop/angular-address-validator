@@ -1,10 +1,12 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { COUNTRIES } from './consts/country.const';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { debounceTime, finalize, takeUntil } from 'rxjs/operators';
 import { ApiService } from './services/api.service';
 import { ActivatedRoute } from '@angular/router';
+import { AddressModel } from './models/address.model';
+import { Status } from './models/api-response.dto';
 
 @Component({
   selector: 'app-root',
@@ -12,6 +14,7 @@ import { ActivatedRoute } from '@angular/router';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
+  @ViewChild('streetInput') streetInput: ElementRef;
   form: FormGroup;
   ngUnsubscribe$: Subject<void>;
   apiResponse$: BehaviorSubject<any>;
@@ -21,6 +24,7 @@ export class AppComponent implements OnInit, OnDestroy {
   isFetching = false;
 
   apiKey: string;
+  status: Status;
 
   get country(): string {
     return this.form?.get('countryCode').value;
@@ -58,27 +62,52 @@ export class AppComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.ngUnsubscribe$)
       ).subscribe((data) => {
-        this.apiResponse$.next(JSON.stringify(data, undefined, 2));
+      this.status = data.status;
+      this.apiResponse$.next(JSON.stringify(data, undefined, 2));
     });
   }
 
+  resetForm(): void {
+    this.form.reset({countryCode: {value: 'de', disabled: true}});
+    this.status = null;
+  }
+
   subscribeToValues(): void {
-    const street$ = this.form.get('streetAddress').valueChanges;
-    street$.pipe(
+    const form$ = this.form.valueChanges;
+    form$.pipe(
       debounceTime(1000),
       takeUntil(this.ngUnsubscribe$)
-    ).subscribe(street => {
-      if (!street) {
+    ).subscribe((formData) => {
+      console.log(formData);
+      const query = this.constructQuery(formData);
+      if (query === '') {
         return;
       }
-      this.apiService.getAutoCompleteQueryData(this.country, street, this.apiKey)
+
+      this.apiService.getAutoCompleteQueryData(this.country, query, this.apiKey)
         .pipe(
           takeUntil(this.ngUnsubscribe$)
         ).subscribe(data => {
         this.streetFilter$.next(data.results);
+        this.status = data.status;
         this.apiResponse$.next(JSON.stringify(data, undefined, 2));
+        this.streetInput.nativeElement.focus();
       });
     });
+  }
+
+  constructQuery(formData: AddressModel): string {
+    let query = '';
+    if (formData.streetAddress) {
+      query += `${formData.streetAddress} ${formData.houseNumber} `;
+    }
+    if (formData.postalCode) {
+      query += `${formData.postalCode} `;
+    }
+    if (formData.city) {
+      query += formData.city;
+    }
+    return query;
   }
 
   getApiKey(): void {
@@ -105,6 +134,19 @@ export class AppComponent implements OnInit, OnDestroy {
         });
       }
     });
+  }
+
+  getClass(): string {
+    switch (this.status) {
+      case 'SUSPECT':
+        return 'btn btn-warning';
+      case 'INVALID':
+        return 'btn btn-danger';
+      case 'VALID':
+        return 'btn btn-success';
+      default:
+        return 'btn btn-secondary';
+    }
   }
 
   ngOnDestroy(): void {
